@@ -128,8 +128,7 @@ class AirCargoProblem(Problem):
             e.g. 'FTTTFF'
         :return: list of Action objects
         """
-        # TODO implement
-        #print(state)
+
         possible_actions = []
         kb = PropKB()
         kb.tell(decode_state(state, self.state_map).pos_sentence())
@@ -154,7 +153,6 @@ class AirCargoProblem(Problem):
         :param action: Action applied
         :return: resulting state after action
         """
-        # TODO implement
         new_state = FluentState([], [])
         old_state = decode_state(state, self.state_map)
         for fluent in old_state.pos:
@@ -210,6 +208,28 @@ class AirCargoProblem(Problem):
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
         count = 0
+        satisfied_conditions = []
+
+        # identifying which goals are met already
+        state = decode_state(node.state, self.state_map)
+        for clause in state.pos:
+            if clause in self.goal:
+                satisfied_conditions.append(clause)
+
+        # identifying number of actions needed to reach the goal
+        for action in self.actions_list:
+            count_this_action = False
+            # looping over the positive effects of the current action, ignoring preconditions
+            for effect in action.effect_add:
+                if effect in self.goal and effect not in satisfied_conditions:
+                    satisfied_conditions.append(effect)
+                    count_this_action = True    # if one of the effects helps to reach the goal, then count this action
+
+            if count_this_action:
+                count += 1
+
+            if len(satisfied_conditions) == len(self.goal):
+                break
         return count
 
 
@@ -257,11 +277,13 @@ def air_cargo_p2() -> AirCargoProblem:
             neg.append(expr('In({}, {})'.format(c, p)))
 
         for a in airports:
+            # adding to 'neg' those combinations that not in 'pos'
             if not expr('At({}, {})'.format(c, a)) in pos:
                 neg.append(expr('At({}, {})'.format(c, a)))
 
     for p in planes:
         for a in airports:
+            # adding to 'neg' those combinations that not in 'pos'
             if not expr('At({}, {})'.format(p, a)) in pos:
                 neg.append(expr('At({}, {})'.format(p, a)))
     # -------------
